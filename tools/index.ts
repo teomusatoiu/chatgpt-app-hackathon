@@ -3,6 +3,7 @@ import addGuestTool from "./add-guest";
 import addScheduleItemTool from "./add-schedule-item";
 import addTaskTool from "./add-task";
 import generateInvitationTextTool from "./generate-invitation-text";
+import hctgVenueSearchTool from "./hctg-venue-search";
 import getFullScheduleTool from "./get-full-schedule";
 import getPendingTasksTool from "./get-pending-tasks";
 import setEventDetailsTool from "./set-event-details";
@@ -19,4 +20,5 @@ export const toolDefinitions: ToolDefinition[] = [
   getFullScheduleTool,
   generateInvitationTextTool,
   tripadvisorVenueSearchTool,
+  hctgVenueSearchTool,
 ];
