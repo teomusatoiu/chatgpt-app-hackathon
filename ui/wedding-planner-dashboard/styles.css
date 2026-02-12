@@ -1,0 +1,106 @@
+.wedding-dashboard {
+  font-family: "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+  color: #222;
+  background:
+    radial-gradient(circle at top right, #f9e8d8 0%, #f5f0ea 45%, #eef2f4 100%);
+  border: 1px solid #d9cec4;
+  border-radius: 20px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.wedding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.wedding-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: 0.3px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a6252;
+}
+
+.active-view {
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #ffffffcc;
+  border: 1px solid #d2c3b7;
+}
+
+.card {
+  background: #ffffffdc;
+  border: 1px solid #d7cabc;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.card.is-active {
+  border-color: #b88662;
+  box-shadow: 0 0 0 1px #b88662;
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.card li {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid #eadfd5;
+  padding-top: 6px;
+  font-size: 0.92rem;
+}
+
+.card li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.muted {
+  margin: 0;
+  color: #6f6f6f;
+  font-size: 0.9rem;
+}
+
+.invitation .theme {
+  margin: 0 0 4px;
+  font-size: 0.84rem;
+  text-transform: capitalize;
+  color: #6f4f3a;
+}
+
+.invitation p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+@media (min-width: 720px) {
+  .wedding-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wedding-header {
+    grid-column: 1 / -1;
+  }
+}
