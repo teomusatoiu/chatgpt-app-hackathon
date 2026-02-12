@@ -1,14 +1,14 @@
 import type { ToolDefinition } from "../utils/define-tool";
-import pizzaAlbumsTool from "./pizza-albums";
-import pizzaCarouselTool from "./pizza-carousel";
-import pizzaListTool from "./pizza-list";
-import pizzaMapTool from "./pizza-map";
-import pizzaShopTool from "./pizza-shop";
+import weddingContextBuilderTool from "./wedding-context-builder";
+import weddingVenueStrategyTool from "./wedding-venue-strategy";
+import weddingBudgetArchitectureTool from "./wedding-budget-architecture";
+import weddingDesignDirectionTool from "./wedding-design-direction";
+import weddingPlannerPitchTool from "./wedding-planner-pitch";
 
 export const toolDefinitions: ToolDefinition[] = [
-  pizzaMapTool,
-  pizzaCarouselTool,
-  pizzaAlbumsTool,
-  pizzaListTool,
-  pizzaShopTool,
+  weddingContextBuilderTool,
+  weddingVenueStrategyTool,
+  weddingBudgetArchitectureTool,
+  weddingDesignDirectionTool,
+  weddingPlannerPitchTool,
 ];

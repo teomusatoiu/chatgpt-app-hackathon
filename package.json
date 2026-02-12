@@ -16,9 +16,11 @@
     "dev:vite": "vite --config vite.config.mts",
     "tsc": "tsc -b",
     "tsc:app": "tsc -p tsconfig.app.json",
-    "tsc:mcp": "tsc -p tsconfig.mcp.json",
+    "tsc:mcp": "tsc -p tsconfig.mcp.json --noEmit",
     "tsc:node": "tsc -p tsconfig.node.json",
-    "dev:host": "vite --config vite.host.config.mts"
+    "dev:host": "vite --config vite.host.config.mts",
+    "lint": "pnpm run tsc:app && pnpm run tsc:mcp && pnpm run tsc:node",
+    "test": "tsx --test tests/wedding-engine.test.ts"
   },
   "keywords": [],
   "author": "",

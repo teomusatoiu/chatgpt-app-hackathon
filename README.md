@@ -1,14 +1,34 @@
-# Apps SDK Pizzaz Examples
+# Wedding Planner MCP Demo
 
-Focused Apps SDK + MCP example centered on Pizzaz widgets.
+Deterministic ChatGPT Apps SDK + MCP connector for a 4-step wedding planning flow
+plus a final planner pitch.
+
+## What this repo does
+
+The server exposes 5 read-only tools:
+
+1. `wedding-context-builder`
+2. `wedding-venue-strategy`
+3. `wedding-budget-architecture`
+4. `wedding-design-direction`
+5. `wedding-planner-pitch`
+
+Each tool returns:
+
+- `structuredContent` for both model and widget
+- concise `content` narration
+- widget rendering metadata via tool `_meta`
+
+The logic is deterministic and template-based, with no external planning APIs.
 
 ## Project layout
 
 - `index.ts` - MCP server entrypoint (SSE + tool wiring)
-- `tools/` - MCP tool definitions (one file per tool)
+- `tools/` - tool definitions and wedding planning engine
+- `tools/wedding-domain/` - schemas, types, and deterministic planning logic
 - `utils/` - generic MCP server plumbing/helpers
-- `ui/` - React widget source code
-- `assets/` - built widget HTML/JS/CSS output
+- `ui/` - React widget source code for each planning step
+- `assets/` - built widget HTML/JS/CSS output (generated)
 - `build-all.mts` - widget production build script
 - `vite.config.mts` - local widget dev server config
 
@@ -31,58 +51,15 @@ cp .env.example .env
 
 - `MCP_PORT` controls MCP server port (default `8000`)
 
-## OpenAI Docs MCP
+## Local development
 
-Recommend installing the OpenAI developer docs MCP server.
-
-Server URL (streamable HTTP): `https://developers.openai.com/mcp`
-
-```bash
-codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp
-codex mcp list
-```
-
-Alternative config in `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.openaiDeveloperDocs]
-url = "https://developers.openai.com/mcp"
-```
-
-Add this instruction to AGENTS guidance when working with OpenAI platform topics:
-
-```text
-Always use the OpenAI developer documentation MCP server if you need to work with the OpenAI API, ChatGPT Apps SDK, Codex,… without me having to explicitly ask.
-```
-
-## Smooth local dev
-
-Run everything with one command:
+Run full loop (build + watch + MCP):
 
 ```bash
 pnpm run dev
 ```
 
-This does:
-
-- initial asset build
-- UI rebuild watch on `ui/**`
-- MCP server watch/restart on backend changes
-- serves widget assets from MCP server at `/assets/*`
-- serves latest widget template HTML from disk on each resource read, so UI-only
-  changes are reflected without restarting MCP
-
-To expose MCP publicly, run ngrok separately:
-
-```bash
-pnpm run dev
-# in another terminal:
-ngrok http 8000
-```
-
-## Common commands
-
-Build widget assets:
+Build widget assets once:
 
 ```bash
 pnpm run build
@@ -94,23 +71,64 @@ Run MCP server:
 pnpm run mcp:start
 ```
 
-Run MCP server in watch mode:
+## Quality checks
+
+Run type checks:
 
 ```bash
-pnpm run mcp:dev
+pnpm run lint
 ```
 
-Run Vite UI dev server only:
+Run deterministic engine tests:
 
 ```bash
-pnpm run dev:vite
+pnpm run test
 ```
 
-Optional separate static asset serving (not needed for normal MCP dev):
+## Demo flow script
 
-```bash
-BASE_URL=http://localhost:4444 pnpm run build
-pnpm run serve
+Use the same couple context for each tool call in order.
+
+### Step 1 - Context Builder
+
+Prompt:
+
+```text
+Run wedding-context-builder for Lisbon, 2027-07-10, 120 guests, budget 35000-45000,
+priorities [food, elegance, photos], vibe words [modern, romantic, minimalist],
+non-negotiable: exceptional culinary experience.
+```
+
+### Step 2 - Venue Strategy
+
+Prompt:
+
+```text
+Run wedding-venue-strategy with the same couple context.
+```
+
+### Step 3 - Budget Architecture
+
+Prompt:
+
+```text
+Run wedding-budget-architecture with the same couple context.
+```
+
+### Step 4 - Design Direction
+
+Prompt:
+
+```text
+Run wedding-design-direction with the same couple context.
+```
+
+### Final - Planner Pitch
+
+Prompt:
+
+```text
+Run wedding-planner-pitch with the same couple context.
 ```
 
 ## MCP endpoints
@@ -123,28 +141,20 @@ Default (`MCP_PORT=8000`):
 
 ## ChatGPT connector (local)
 
-Run the MCP app locally:
+Run locally:
 
 ```bash
 pnpm run dev
 ```
 
-In a separate terminal, expose it with ngrok:
+Expose with ngrok in another terminal:
 
 ```bash
 ngrok http 8000
 ```
 
-Then add this MCP URL in ChatGPT developer mode:
+Use the URL in ChatGPT developer mode:
 
 ```text
 https://<your-tunnel-domain>/mcp
-```
-
-## Deploy note
-
-If assets are hosted elsewhere, override `BASE_URL` when building:
-
-```bash
-BASE_URL=https://your-server.com pnpm run build
 ```
