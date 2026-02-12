@@ -2,7 +2,6 @@ import { createRoot } from "react-dom/client";
 import { useMemo } from "react";
 
 import { Button } from "@openai/apps-sdk-ui/components/Button";
-import { Image } from "@openai/apps-sdk-ui/components/Image";
 import { useWidgetProps } from "../hooks/use-widget-props";
 
 type Venue = {
@@ -114,12 +113,16 @@ function App() {
                 }
               }}
             >
-              <div className="relative h-72 w-full bg-slate-100">
+              <div className="relative aspect-[16/9] w-full bg-slate-100">
                 {v.imageUrl ? (
-                  <Image
+                  // Use a plain <img> instead of the SDK Image component so we can
+                  // reliably enforce "fill the whole bubble" sizing inside ChatGPT.
+                  <img
                     src={v.imageUrl}
                     alt={v.name}
                     className="h-full w-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm text-slate-600">
