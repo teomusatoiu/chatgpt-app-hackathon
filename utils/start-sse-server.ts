@@ -52,6 +52,10 @@ function getMimeType(filePath: string): string {
       return "image/jpeg";
     case ".webp":
       return "image/webp";
+    case ".pdf":
+      return "application/pdf";
+    case ".csv":
+      return "text/csv; charset=utf-8";
     default:
       return "application/octet-stream";
   }
@@ -210,6 +214,12 @@ export function startSseServer(options: StartSseServerOptions): HttpServer {
   const staticAssetsPath = options.staticAssetsPath ?? "/assets";
   const sessions = new Map<string, SessionRecord>();
 
+  const normalizePathname = (pathname: string): string => {
+    if (!pathname) return "/";
+    const normalized = pathname.replace(/\/+$/, "");
+    return normalized.length ? normalized : "/";
+  };
+
   const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = getRequestUrl(req);
 
@@ -218,9 +228,13 @@ export function startSseServer(options: StartSseServerOptions): HttpServer {
       return;
     }
 
+    const pathname = normalizePathname(url.pathname);
+    const ssePathNormalized = normalizePathname(ssePath);
+    const postPathNormalized = normalizePathname(postPath);
+
     if (
       req.method === "OPTIONS" &&
-      (url.pathname === ssePath || url.pathname === postPath)
+      (pathname === ssePathNormalized || pathname === postPathNormalized)
     ) {
       res.writeHead(204, {
         "Access-Control-Allow-Origin": "*",
@@ -231,7 +245,7 @@ export function startSseServer(options: StartSseServerOptions): HttpServer {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === ssePath) {
+    if (req.method === "GET" && pathname === ssePathNormalized) {
       await connectSseSession(
         res,
         postPath,
@@ -241,7 +255,7 @@ export function startSseServer(options: StartSseServerOptions): HttpServer {
       return;
     }
 
-    if (req.method === "POST" && url.pathname === postPath) {
+    if (req.method === "POST" && pathname === postPathNormalized) {
       await handleMessagePost(req, res, url, sessions);
       return;
     }

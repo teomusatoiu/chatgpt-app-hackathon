@@ -23,13 +23,16 @@ Focused Apps SDK + MCP example centered on Pizzaz widgets.
 pnpm install
 ```
 
-Optional local config:
-
-```bash
-cp .env.example .env
-```
+Environment variables:
 
 - `MCP_PORT` controls MCP server port (default `8000`)
+- `OPENAI_API_KEY` is required for the wedding tools that generate images/PDFs
+
+Tip: prefer setting `OPENAI_API_KEY` in your shell/session (not in a file you might open in the editor), e.g.:
+
+```bash
+export OPENAI_API_KEY="..."
+```
 
 ## OpenAI Docs MCP
 
@@ -87,6 +90,34 @@ Build widget assets:
 ```bash
 pnpm run build
 ```
+
+## Wedding pitch deck tool (new)
+
+This repo includes a starter wedding-planning tool + widget:
+
+- MCP tool: `wedding-pitch-deck`
+- MCP tool: `wedding-planner` (opens intake UI first)
+- Widget: `wedding-pitch-deck` (renders slides/venues/budget + export links)
+
+### Required env vars
+
+- `OPENAI_API_KEY`
+
+Optional:
+
+- `OPENAI_TEXT_MODEL` (defaults to `gpt-4o-mini`)
+
+### What it generates
+
+- AI images per slide (saved under `/assets/generated/...`)
+- A 16:9 slide deck PDF (`deck-*.pdf`)
+- A budget CSV (`budget-*.csv`)
+- Venue shortlist with TripAdvisor search links
+
+### Recommended flow
+
+1. Call `wedding-planner` to open the intake UI.
+2. Fill in country/budget/guests/theme/colors in the widget and click `Regenerate` to run `wedding-pitch-deck`.
 
 Run MCP server:
 

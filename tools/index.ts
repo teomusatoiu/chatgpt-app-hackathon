@@ -4,6 +4,8 @@ import pizzaCarouselTool from "./pizza-carousel";
 import pizzaListTool from "./pizza-list";
 import pizzaMapTool from "./pizza-map";
 import pizzaShopTool from "./pizza-shop";
+import weddingPlannerTool from "./wedding-planner";
+import weddingPitchDeckTool from "./wedding-pitch-deck";
 
 export const toolDefinitions: ToolDefinition[] = [
   pizzaMapTool,
@@ -11,4 +13,6 @@ export const toolDefinitions: ToolDefinition[] = [
   pizzaAlbumsTool,
   pizzaListTool,
   pizzaShopTool,
+  weddingPlannerTool,
+  weddingPitchDeckTool,
 ];
