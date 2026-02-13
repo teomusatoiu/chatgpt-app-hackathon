@@ -39,6 +39,7 @@ type ScheduleItem = {
 type InvitationDraft = {
   theme: string;
   text: string;
+  image_url: string | null;
 };
 
 type DashboardData = {
@@ -56,6 +57,7 @@ type ToolOutput = {
   view?: DashboardView;
   guest_id?: string;
   invitation_text?: string;
+  invitation_image_url?: string | null;
   data?: Partial<DashboardData>;
 };
 
@@ -225,6 +227,34 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getInvitationImageFromToolOutput(output: unknown): string | null {
+  if (!isRecord(output)) {
+    return null;
+  }
+
+  if (typeof output.invitation_image_url === "string" && output.invitation_image_url.trim()) {
+    return output.invitation_image_url.trim();
+  }
+
+  if (!isRecord(output.data)) {
+    return null;
+  }
+
+  const latestInvitation = output.data.latestInvitation;
+  if (!isRecord(latestInvitation)) {
+    return null;
+  }
+
+  if (typeof latestInvitation.image_url === "string" && latestInvitation.image_url.trim()) {
+    return latestInvitation.image_url.trim();
+  }
+
+  return null;
+}
 function App() {
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
@@ -275,6 +305,7 @@ function App() {
 
   const [invitationTone, setInvitationTone] = useState<string>("romantic");
   const [invitationText, setInvitationText] = useState("");
+  const [invitationImageUrl, setInvitationImageUrl] = useState<string | null>(null);
   const [isGeneratingInvite, setGeneratingInvite] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -331,9 +362,14 @@ function App() {
 
     setInvitationTone(data.latestInvitation.theme || "romantic");
     setInvitationText(data.latestInvitation.text);
+    setInvitationImageUrl(data.latestInvitation.image_url ?? null);
     setSaveStatus("saved");
     setLastSavedAt(formatSaveTime(new Date()));
-  }, [data.latestInvitation?.theme, data.latestInvitation?.text]);
+  }, [
+    data.latestInvitation?.theme,
+    data.latestInvitation?.text,
+    data.latestInvitation?.image_url,
+  ]);
 
   useEffect(() => {
     if (!invitationText.trim()) {
@@ -536,12 +572,20 @@ function App() {
 
   async function handleGenerateInvitation() {
     setGeneratingInvite(true);
+    setInvitationImageUrl(null);
 
     try {
       if (window?.openai?.callTool) {
         const response = await window.openai.callTool("generateInvitationText", {
           theme: invitationTone,
         });
+
+        const imageFromToolOutput = getInvitationImageFromToolOutput(
+          (response as { structuredContent?: unknown }).structuredContent,
+        );
+        if (imageFromToolOutput) {
+          setInvitationImageUrl(imageFromToolOutput);
+        }
 
         if (response.result?.trim()) {
           setInvitationText(response.result.trim());
@@ -551,9 +595,11 @@ function App() {
       }
 
       setInvitationText(buildFallbackInvitation(invitationTone));
+      setInvitationImageUrl(null);
       setStatusMessage("Live generation unavailable, used a local draft.");
     } catch {
       setInvitationText(buildFallbackInvitation(invitationTone));
+      setInvitationImageUrl(null);
       setStatusMessage("Live generation unavailable, used a local draft.");
     } finally {
       setGeneratingInvite(false);
@@ -897,6 +943,16 @@ function App() {
         placeholder="Type your invitation message..."
       />
 
+      {invitationImageUrl ? (
+        <figure className="invitation-image">
+          <img
+            src={invitationImageUrl}
+            alt="Generated invitation illustration of a happy couple."
+            loading="lazy"
+          />
+        </figure>
+      ) : null}
+
       <div className="invitation-actions">
         <label htmlFor="invitation-tone" className="tone-select">
           Tone
@@ -932,6 +988,24 @@ function App() {
       style={containerStyle}
     >
       <header className="dashboard-hero">
+        <button
+          type="button"
+          className={`fullscreen-toggle ${isFullscreen ? "is-active" : ""}`}
+          onClick={() => requestDisplayMode(isFullscreen ? "inline" : "fullscreen")}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-pressed={isFullscreen}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          <svg
+            className="fullscreen-toggle-icon"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M5.5 7.5 10 12.5 14.5 7.5" />
+          </svg>
+        </button>
+
         <div className="hero-main">
           <div className="brand-mark" aria-hidden="true">
             <span className="brand-dot dot-lg" />
@@ -965,23 +1039,6 @@ function App() {
         </div>
 
         <div className="hero-actions">
-          {isFullscreen ? (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => requestDisplayMode("inline")}
-            >
-              Exit fullscreen
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => requestDisplayMode("fullscreen")}
-            >
-              Enter fullscreen
-            </button>
-          )}
           <button type="button" className="btn btn-ghost" onClick={handleShare}>
             Share
           </button>

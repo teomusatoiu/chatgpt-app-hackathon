@@ -42,10 +42,50 @@
 }
 
 .dashboard-hero {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px;
   align-items: start;
+  padding-right: 48px;
+}
+
+.fullscreen-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #dcc8b9;
+  border-radius: 999px;
+  background: #fff9f4;
+  color: var(--title);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.fullscreen-toggle:hover {
+  background: #fdf2e9;
+  border-color: #cfa987;
+}
+
+.fullscreen-toggle-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
+}
+
+.fullscreen-toggle.is-active .fullscreen-toggle-icon {
+  transform: rotate(180deg);
 }
 
 .hero-main {
@@ -131,6 +171,7 @@
 
 .btn:focus-visible,
 .icon-btn:focus-visible,
+.fullscreen-toggle:focus-visible,
 .quick-add input:focus-visible,
 .guest-search:focus-visible,
 .guest-composer input:focus-visible,
@@ -742,6 +783,22 @@ textarea {
   line-height: 1.5;
 }
 
+.invitation-image {
+  margin: 0;
+  border: 1px solid #e8d8c9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff8f2;
+}
+
+.invitation-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
 .autosave-state {
   margin: 0;
   color: var(--muted);
@@ -854,6 +911,11 @@ textarea {
 
   .dashboard-hero {
     grid-template-columns: 1fr;
+  }
+
+  .fullscreen-toggle {
+    width: 36px;
+    height: 36px;
   }
 
   .hero-actions {
