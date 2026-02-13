@@ -1,6 +1,6 @@
-# Apps SDK Pizzaz Examples
+# Apps SDK Wedding Planner Example
 
-Focused Apps SDK + MCP example centered on Pizzaz widgets.
+Focused Apps SDK + MCP example centered on wedding-planner widgets.
 
 ## Project layout
 
