@@ -1,9 +1,10 @@
 import { createRoot } from "react-dom/client";
 import type { CSSProperties, FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDisplayMode } from "../hooks/use-display-mode";
 import { useMaxHeight } from "../hooks/use-max-height";
 import { useWidgetProps } from "../hooks/use-widget-props";
+import { useWidgetState } from "../hooks/use-widget-state";
 import "./styles.css";
 
 type RSVPStatus = "Pending" | "Yes" | "No" | "Maybe";
@@ -58,11 +59,15 @@ type ToolOutput = {
   data?: Partial<DashboardData>;
 };
 
-type PlannerTaskItem = {
+type DemoTaskItem = {
   id: string;
   title: string;
   dueDate: string;
-  source: "server" | "local";
+};
+
+type DashboardWidgetState = {
+  localGuests: Guest[];
+  completedTaskIds: string[];
 };
 
 const EMPTY_DATA: DashboardData = {
@@ -72,6 +77,11 @@ const EMPTY_DATA: DashboardData = {
   pendingTasks: [],
   schedule: [],
   latestInvitation: null,
+};
+
+const EMPTY_WIDGET_STATE: DashboardWidgetState = {
+  localGuests: [],
+  completedTaskIds: [],
 };
 
 const DEFAULT_PENDING_TASKS: Task[] = [
@@ -124,6 +134,34 @@ function normalizeData(partial?: Partial<DashboardData>): DashboardData {
     schedule: partial.schedule ?? [],
     latestInvitation: partial.latestInvitation ?? null,
   };
+}
+
+function normalizeWidgetState(
+  partial?: Partial<DashboardWidgetState> | null,
+): DashboardWidgetState {
+  if (!partial) {
+    return EMPTY_WIDGET_STATE;
+  }
+
+  return {
+    localGuests: partial.localGuests ?? [],
+    completedTaskIds: partial.completedTaskIds ?? [],
+  };
+}
+
+function normalizeContact(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function mergeGuests(serverGuests: Guest[], localGuests: Guest[]): Guest[] {
+  const serverContacts = new Set(
+    serverGuests.map((guest) => normalizeContact(guest.contact)),
+  );
+  const dedupedLocalGuests = localGuests.filter(
+    (guest) => !serverContacts.has(normalizeContact(guest.contact)),
+  );
+
+  return [...serverGuests, ...dedupedLocalGuests];
 }
 
 function isPlaceholderValue(value?: string): boolean {
@@ -187,26 +225,6 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function mergeTaskItems(
-  current: PlannerTaskItem[],
-  incomingServerItems: PlannerTaskItem[],
-): PlannerTaskItem[] {
-  const serverMap = new Map(incomingServerItems.map((task) => [task.id, task]));
-  const localItems = current.filter((task) => task.source === "local");
-
-  const orderedServerFromCurrent = current
-    .filter((task) => task.source === "server" && serverMap.has(task.id))
-    .map((task) => serverMap.get(task.id))
-    .filter((task): task is PlannerTaskItem => Boolean(task));
-
-  const orderedServerIds = new Set(orderedServerFromCurrent.map((task) => task.id));
-  const newServerItems = incomingServerItems.filter(
-    (task) => !orderedServerIds.has(task.id),
-  );
-
-  return [...orderedServerFromCurrent, ...newServerItems, ...localItems];
-}
-
 function App() {
   const displayMode = useDisplayMode();
   const maxHeight = useMaxHeight();
@@ -220,28 +238,31 @@ function App() {
     data: EMPTY_DATA,
   });
   const data = normalizeData(output.data);
+  const [widgetState, setWidgetState] =
+    useWidgetState<DashboardWidgetState>(EMPTY_WIDGET_STATE);
+  const persistedState = normalizeWidgetState(widgetState);
   const activeView = output.view ?? "event";
 
-  const baseTaskItems = useMemo(() => {
-    const sourceTasks =
-      data.pendingTasks.length > 0
-        ? data.pendingTasks
-        : data.tasks.length > 0
-          ? data.tasks
-          : DEFAULT_PENDING_TASKS;
-
-    return sourceTasks.map((task) => ({
+  const taskItems = useMemo<DemoTaskItem[]>(
+    () =>
+      DEFAULT_PENDING_TASKS.map((task) => ({
       id: task.id,
       title: task.title,
       dueDate: task.due_date,
-      source: "server" as const,
-    }));
-  }, [data.pendingTasks, data.tasks]);
-
-  const [taskItems, setTaskItems] = useState<PlannerTaskItem[]>(() => baseTaskItems);
-  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => new Set());
-  const [taskInput, setTaskInput] = useState("");
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+    })),
+    [],
+  );
+  const validTaskIds = useMemo(
+    () => new Set(taskItems.map((task) => task.id)),
+    [taskItems],
+  );
+  const completedTaskIds = useMemo(
+    () =>
+      new Set(
+        persistedState.completedTaskIds.filter((taskId) => validTaskIds.has(taskId)),
+      ),
+    [persistedState.completedTaskIds, validTaskIds],
+  );
 
   const [guestSearch, setGuestSearch] = useState("");
   const [guestFilter, setGuestFilter] = useState<RSVPFilter>("all");
@@ -251,7 +272,6 @@ function App() {
   const [isGuestComposerOpen, setGuestComposerOpen] = useState(false);
   const [newGuestName, setNewGuestName] = useState("");
   const [newGuestContact, setNewGuestContact] = useState("");
-  const [localGuests, setLocalGuests] = useState<Guest[]>([]);
 
   const [invitationTone, setInvitationTone] = useState<string>("romantic");
   const [invitationText, setInvitationText] = useState("");
@@ -259,29 +279,44 @@ function App() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
-  const taskInputRef = useRef<HTMLInputElement | null>(null);
-
   useEffect(() => {
-    setTaskItems((current) => mergeTaskItems(current, baseTaskItems));
-  }, [baseTaskItems]);
+    const nextCompletedTaskIds = persistedState.completedTaskIds.filter((taskId) =>
+      validTaskIds.has(taskId),
+    );
 
-  useEffect(() => {
-    setCompletedTaskIds((current) => {
-      const validIds = new Set(taskItems.map((task) => task.id));
-      const next = new Set<string>();
-      let changed = false;
+    if (nextCompletedTaskIds.length === persistedState.completedTaskIds.length) {
+      return;
+    }
 
-      current.forEach((taskId) => {
-        if (validIds.has(taskId)) {
-          next.add(taskId);
-        } else {
-          changed = true;
-        }
-      });
-
-      return changed ? next : current;
+    setWidgetState((current) => {
+      const normalizedState = normalizeWidgetState(current);
+      return {
+        ...normalizedState,
+        completedTaskIds: nextCompletedTaskIds,
+      };
     });
-  }, [taskItems]);
+  }, [persistedState.completedTaskIds, setWidgetState, validTaskIds]);
+
+  useEffect(() => {
+    const serverContacts = new Set(
+      data.guests.map((guest) => normalizeContact(guest.contact)),
+    );
+    const nextLocalGuests = persistedState.localGuests.filter(
+      (guest) => !serverContacts.has(normalizeContact(guest.contact)),
+    );
+
+    if (nextLocalGuests.length === persistedState.localGuests.length) {
+      return;
+    }
+
+    setWidgetState((current) => {
+      const normalizedState = normalizeWidgetState(current);
+      return {
+        ...normalizedState,
+        localGuests: nextLocalGuests,
+      };
+    });
+  }, [data.guests, persistedState.localGuests, setWidgetState]);
 
   useEffect(() => {
     if (output.guest_id) {
@@ -316,7 +351,10 @@ function App() {
     };
   }, [invitationText]);
 
-  const guests = useMemo(() => [...data.guests, ...localGuests], [data.guests, localGuests]);
+  const guests = useMemo(
+    () => mergeGuests(data.guests, persistedState.localGuests),
+    [data.guests, persistedState.localGuests],
+  );
 
   const filteredGuests = useMemo(() => {
     const normalizedSearch = guestSearch.trim().toLowerCase();
@@ -432,13 +470,14 @@ function App() {
   }
 
   function handleNewItem() {
-    taskInputRef.current?.focus();
-    setStatusMessage("Ready to add a new task.");
+    setGuestComposerOpen(true);
+    setStatusMessage("Task list is fixed for this demo. Add guests instead.");
   }
 
   function toggleChecklistTask(taskId: string) {
-    setCompletedTaskIds((current) => {
-      const next = new Set(current);
+    setWidgetState((current) => {
+      const normalizedState = normalizeWidgetState(current);
+      const next = new Set(normalizedState.completedTaskIds);
 
       if (next.has(taskId)) {
         next.delete(taskId);
@@ -446,68 +485,11 @@ function App() {
         next.add(taskId);
       }
 
-      return next;
+      return {
+        ...normalizedState,
+        completedTaskIds: [...next],
+      };
     });
-  }
-
-  function moveTask(taskId: string, targetId: string) {
-    if (taskId === targetId) {
-      return;
-    }
-
-    setTaskItems((current) => {
-      const fromIndex = current.findIndex((task) => task.id === taskId);
-      const toIndex = current.findIndex((task) => task.id === targetId);
-
-      if (fromIndex < 0 || toIndex < 0) {
-        return current;
-      }
-
-      const next = [...current];
-      const [moving] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moving);
-      return next;
-    });
-  }
-
-  function moveTaskByOffset(taskId: string, offset: number) {
-    setTaskItems((current) => {
-      const currentIndex = current.findIndex((task) => task.id === taskId);
-
-      if (currentIndex < 0) {
-        return current;
-      }
-
-      const targetIndex = clamp(currentIndex + offset, 0, current.length - 1);
-      if (targetIndex === currentIndex) {
-        return current;
-      }
-
-      const next = [...current];
-      const [moving] = next.splice(currentIndex, 1);
-      next.splice(targetIndex, 0, moving);
-      return next;
-    });
-  }
-
-  function handleTaskSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const title = taskInput.trim();
-    if (!title) {
-      return;
-    }
-
-    const task: PlannerTaskItem = {
-      id: `local_task_${Date.now()}`,
-      title,
-      dueDate: "",
-      source: "local",
-    };
-
-    setTaskItems((current) => [task, ...current]);
-    setTaskInput("");
-    setStatusMessage(`Task added: ${title}`);
   }
 
   function handleAddGuest(event: FormEvent<HTMLFormElement>) {
@@ -521,9 +503,9 @@ function App() {
       return;
     }
 
-    const normalizedContact = contact.toLowerCase();
+    const normalizedContact = normalizeContact(contact);
     const duplicate = guests.some(
-      (guest) => guest.contact.trim().toLowerCase() === normalizedContact,
+      (guest) => normalizeContact(guest.contact) === normalizedContact,
     );
 
     if (duplicate) {
@@ -538,7 +520,13 @@ function App() {
       rsvp_status: "Pending",
     };
 
-    setLocalGuests((current) => [guest, ...current]);
+    setWidgetState((current) => {
+      const normalizedState = normalizeWidgetState(current);
+      return {
+        ...normalizedState,
+        localGuests: [guest, ...normalizedState.localGuests],
+      };
+    });
     setSelectedGuestId(guest.id);
     setNewGuestName("");
     setNewGuestContact("");
@@ -657,89 +645,28 @@ function App() {
         <span className="chip">{pendingTaskCount} open</span>
       </div>
 
-      <form className="quick-add" onSubmit={handleTaskSubmit}>
-        <label htmlFor="task-quick-add" className="sr-only">
-          Add task
-        </label>
-        <input
-          id="task-quick-add"
-          ref={taskInputRef}
-          value={taskInput}
-          onChange={(event) => setTaskInput(event.target.value)}
-          placeholder="Add task (press Enter to save)"
-        />
-      </form>
+      <ul className="task-list" role="list">
+        {taskItems.map((task) => {
+          const isDone = completedTaskIds.has(task.id);
 
-      {taskItems.length > 0 ? (
-        <ul className="task-list" role="list">
-          {taskItems.map((task, index) => {
-            const isDone = completedTaskIds.has(task.id);
-
-            return (
-              <li
-                key={task.id}
-                className={`task-row ${isDone ? "is-done" : ""} ${
-                  draggedTaskId === task.id ? "is-dragging" : ""
-                }`}
-                draggable
-                onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = "move";
-                  setDraggedTaskId(task.id);
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                }}
-                onDrop={() => {
-                  if (draggedTaskId) {
-                    moveTask(draggedTaskId, task.id);
-                  }
-                }}
-                onDragEnd={() => {
-                  setDraggedTaskId(null);
-                }}
-              >
-                <label className="task-main">
-                  <input
-                    type="checkbox"
-                    checked={isDone}
-                    onChange={() => toggleChecklistTask(task.id)}
-                    aria-label={`Mark ${task.title} as complete`}
-                  />
-                  <span className="task-title">{task.title}</span>
-                </label>
-                <span className="task-meta">
-                  {task.dueDate ? `Due ${task.dueDate}` : "No due date"}
-                </span>
-                <div className="task-controls">
-                  <span className="drag-handle" aria-hidden="true">
-                    ::
-                  </span>
-                  <button
-                    type="button"
-                    className="icon-btn tiny"
-                    onClick={() => moveTaskByOffset(task.id, -1)}
-                    disabled={index === 0}
-                    aria-label={`Move ${task.title} up`}
-                  >
-                    Up
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn tiny"
-                    onClick={() => moveTaskByOffset(task.id, 1)}
-                    disabled={index === taskItems.length - 1}
-                    aria-label={`Move ${task.title} down`}
-                  >
-                    Down
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="muted">No pending tasks right now.</p>
-      )}
+          return (
+            <li key={task.id} className={`task-row ${isDone ? "is-done" : ""}`}>
+              <label className="task-main">
+                <input
+                  type="checkbox"
+                  checked={isDone}
+                  onChange={() => toggleChecklistTask(task.id)}
+                  aria-label={`Mark ${task.title} as complete`}
+                />
+                <span className="task-title">{task.title}</span>
+              </label>
+              <span className="task-meta">
+                {task.dueDate ? `Due ${task.dueDate}` : "No due date"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 
