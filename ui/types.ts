@@ -79,6 +79,7 @@ export type RequestDisplayMode = (args: { mode: DisplayMode }) => Promise<{
 
 export type CallToolResponse = {
   result: string;
+  structuredContent?: UnknownObject | null;
 };
 
 /** Calling APIs */

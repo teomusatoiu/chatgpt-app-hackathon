@@ -29,6 +29,7 @@ export type ScheduleItem = {
 export type InvitationDraft = {
   theme: string;
   text: string;
+  image_url: string | null;
 };
 
 type WeddingState = {
@@ -127,6 +128,7 @@ function cloneInvitation(draft: InvitationDraft): InvitationDraft {
   return {
     theme: draft.theme,
     text: draft.text,
+    image_url: draft.image_url,
   };
 }
 
@@ -212,10 +214,15 @@ export function getFullSchedule(): ScheduleItem[] {
   return state.schedule.map((item) => cloneScheduleItem(item));
 }
 
-export function setLatestInvitation(theme: string, text: string): InvitationDraft {
+export function setLatestInvitation(
+  theme: string,
+  text: string,
+  imageUrl: string | null = null,
+): InvitationDraft {
   state.latestInvitation = {
     theme,
     text,
+    image_url: imageUrl,
   };
   return cloneInvitation(state.latestInvitation);
 }
